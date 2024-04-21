@@ -58,7 +58,7 @@ def process_image():
         line1, line2, width, height, max_val, img_data = read_pgm_file(image_file)
 
         # Do image processing here
-        inverted_img_data = invert_pixels(img_data)
+        inverted_img_data = invert_pixels(img_data) #why this?
 
         output_data = compile_pgm_file(line1, line2, width, height, max_val, inverted_img_data)
 
