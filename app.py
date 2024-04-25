@@ -94,16 +94,6 @@ def process_image():
         local_output_filename = 'local_equalized_image.pgm'
         write_pgm_file(local_output_filename, local_output_data)
 
-        #inverted_img_data = invert_pixels(img_data)
-
-        #output_data = compile_pgm_file(line1, line2, width, height, max_val, inverted_img_data)
-
-        # Filename for the output file
-        #output_filename = 'inverted_image.pgm'
-
-        # Write data to disk (use for testing purpose only)
-        #write_pgm_file(output_filename, output_data)
-
         return send_file(local_output_data, mimetype='image/pgm', as_attachment=True, download_name=local_output_filename)
     else:
         return 'Invalid file format. Only PGM files are allowed.'
