@@ -46,3 +46,17 @@ This is a simple Python REST API built with Flask that accepts an image as input
     Replace test-img5.pgm with the actual path to the image file you want to process.
 
 4. The API will perform local histogram equalization on the image and outputs it.
+
+## Running using docker
+
+1. Build image using docker
+
+   ```
+   docker build -t app .
+   ```
+
+2. Run image
+
+   ```
+   docker run -p 5000:5000 app
+   ```
