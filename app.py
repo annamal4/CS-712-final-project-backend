@@ -46,17 +46,51 @@ def write_pgm_file(filename, compiled_data):
     with open(filename, 'wb') as f:
         f.write(compiled_data.getvalue())
 
+# Histogram helper functions
+
+def calculate_histogram(image, width, height):
+    histogram = [0] * 256
+    
+    for y in range(height):
+        for x in range(width):
+            pixel_value = image[y][x]
+            histogram[pixel_value] += 1
+    
+    return histogram
+
+def calculate_cumulative_histogram(histogram):
+    cumulative_histogram = [0] * 256
+    cumulative_sum = 0
+    
+    for i in range(256):
+        cumulative_sum += histogram[i]
+        cumulative_histogram[i] = cumulative_sum
+    
+    return cumulative_histogram
+
 #global histogram equalization
 
 def global_histogram_equalization(image_data, width, height):
 
-    # Convert bytes to NumPy array
-    image = np.frombuffer(image_data, dtype=np.uint8).reshape((height, width))
+    image = [[0 for _ in range(width)] for _ in range(height)]
+    for i in range(height):
+        for j in range(width):
+            image[i][j] = image_data[i * width + j]
+    
+    histogram = calculate_histogram(image, width, height)
+    cumulative_histogram = calculate_cumulative_histogram(histogram)
 
-    # Apply global histogram equalization
-    equalized_image = cv2.equalizeHist(image)
+    total_pixels = width * height
+    normalized_histogram = [int(round((cumulative_histogram[i] / total_pixels) * 255)) for i in range(256)]
 
-    return equalized_image
+    equalized_image = [[0 for _ in range(width)] for _ in range(height)]
+    for i in range(height):
+        for j in range(width):
+            equalized_image[i][j] = normalized_histogram[image[i][j]]
+
+    equalized_image_bytes = bytes(sum(equalized_image, []))
+
+    return equalized_image_bytes
 
 #local histogram equalization
 def local_histogram_equalization(image_data, width, height, clip_limit=2.0, tile_grid_size=(8, 8)):
@@ -109,7 +143,7 @@ def process_global_image():
 
         #apply global histogram equalization
         global_equalized_img_data = global_histogram_equalization(img_data, width, height)
-        global_output_data = compile_pgm_file(line1, line2, width, height, max_val, global_equalized_img_data.tobytes())
+        global_output_data = compile_pgm_file(line1, line2, width, height, max_val, global_equalized_img_data)
         global_output_filename = 'global_equalized_image.pgm'
         write_pgm_file(global_output_filename, global_output_data)
         return send_file(global_output_data, mimetype='image/pgm', as_attachment=True, download_name=global_output_filename)
