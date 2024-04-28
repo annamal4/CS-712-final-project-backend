@@ -52,83 +52,56 @@ def write_pgm_file(filename, compiled_data):
         f.write(compiled_data.getvalue())
 
 
+# Histogram helper functions
+
+def calculate_histogram(image, width, height):
+    histogram = [0] * 256
+
+    for y in range(height):
+        for x in range(width):
+            pixel_value = image[y][x]
+            histogram[pixel_value] += 1
+
+    return histogram
+
+
+def calculate_cumulative_histogram(histogram):
+    cumulative_histogram = [0] * 256
+    cumulative_sum = 0
+
+    for i in range(256):
+        cumulative_sum += histogram[i]
+        cumulative_histogram[i] = cumulative_sum
+
+    return cumulative_histogram
+
+
 # global histogram equalization
 
 def global_histogram_equalization(image_data, width, height):
-    # Convert bytes to NumPy array
-    image = np.frombuffer(image_data, dtype=np.uint8).reshape((height, width))
+    image = [[0 for _ in range(width)] for _ in range(height)]
+    for i in range(height):
+        for j in range(width):
+            image[i][j] = image_data[i * width + j]
 
-    # Apply global histogram equalization
-    equalized_image = cv2.equalizeHist(image)
+    histogram = calculate_histogram(image, width, height)
+    cumulative_histogram = calculate_cumulative_histogram(histogram)
 
-    return equalized_image
+    total_pixels = width * height
+    normalized_histogram = [int(round((cumulative_histogram[i] / total_pixels) * 255)) for i in range(256)]
 
+    equalized_image = [[0 for _ in range(width)] for _ in range(height)]
+    for i in range(height):
+        for j in range(width):
+            equalized_image[i][j] = normalized_histogram[image[i][j]]
 
-# local histogram equalization
-def local_histogram_equalization(image_data, width, height, clip_limit=2.0, tile_grid_size=(8, 8)):
-    # Convert bytes to NumPy array
-    image = np.frombuffer(image_data, dtype=np.uint8)
-    image = image.reshape((height, width))  # Use the height and width from the parameters
+    equalized_image_bytes = bytes(sum(equalized_image, []))
 
-    # Create a CLAHE object (Contrast Limited Adaptive Histogram Equalization)
-    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
-
-    # Apply CLAHE to the grayscale image
-    equalized_image = clahe.apply(image)
-
-    return equalized_image
+    return equalized_image_bytes
 
 
 @app.route('/image-local', methods=['POST'])
 def process_image():
-    logger.info("test")
-
-    if 'image' not in request.files:
-        return 'No image file in the request', 400
-
-    image_file = request.files['image']
-
-    if image_file.filename.endswith('.pgm'):
-
-        line1, line2, width, height, max_val, img_data = read_pgm_file(image_file.stream)
-
-        # Apply local histogram equalization
-        local_equalized_img_data = local_histogram_equalization(img_data, width, height, clip_limit=2.0,
-                                                                tile_grid_size=(8, 8))
-
-        local_output_data = compile_pgm_file(line1, line2, width, height, max_val, local_equalized_img_data.tobytes())
-
-        local_output_filename = 'local_equalized_image.pgm'
-        write_pgm_file(local_output_filename, local_output_data)
-
-        return send_file(local_output_data, mimetype='image/pgm', as_attachment=True,
-                         download_name=local_output_filename)
-    else:
-        return 'Invalid file format. Only PGM files are allowed.'
-
-
-@app.route('/image-global', methods=['POST'])
-def process_global_image():
-    logger.info("Processing image with global histogram equalization")
-    if 'image' not in request.files:
-        return 'No image file in the request', 400
-    image_file = request.files['image']
-    if image_file.filename.endswith('.pgm'):
-        line1, line2, width, height, max_val, img_data = read_pgm_file(image_file.stream)
-
-        # apply global histogram equalization
-        global_equalized_img_data = global_histogram_equalization(img_data, width, height)
-        global_output_data = compile_pgm_file(line1, line2, width, height, max_val, global_equalized_img_data.tobytes())
-        global_output_filename = 'global_equalized_image.pgm'
-        write_pgm_file(global_output_filename, global_output_data)
-        return send_file(global_output_data, mimetype='image/pgm', as_attachment=True,
-                         download_name=global_output_filename)
-    else:
-        return 'Invalid file format. Only PGM files are allowed.'
-
-
-@app.route('/local-histogram', methods=['POST'])
-def process_local_histogram():
     logger.info("Processing image with local histogram equalization")
 
     if 'image' not in request.files:
@@ -149,6 +122,26 @@ def process_local_histogram():
                          download_name='local_histogram_equalized_image.png')
     else:
         return 'Invalid file format. Only PNG files are allowed.'
+
+
+@app.route('/image-global', methods=['POST'])
+def process_global_image():
+    logger.info("Processing image with global histogram equalization")
+    if 'image' not in request.files:
+        return 'No image file in the request', 400
+    image_file = request.files['image']
+    if image_file.filename.endswith('.pgm'):
+        line1, line2, width, height, max_val, img_data = read_pgm_file(image_file.stream)
+
+        # apply global histogram equalization
+        global_equalized_img_data = global_histogram_equalization(img_data, width, height)
+        global_output_data = compile_pgm_file(line1, line2, width, height, max_val, global_equalized_img_data)
+        global_output_filename = 'global_equalized_image.pgm'
+        write_pgm_file(global_output_filename, global_output_data)
+        return send_file(global_output_data, mimetype='image/pgm', as_attachment=True,
+                         download_name=global_output_filename)
+    else:
+        return 'Invalid file format. Only PGM files are allowed.'
 
 
 if __name__ == '__main__':
