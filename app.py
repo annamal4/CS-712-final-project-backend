@@ -109,19 +109,16 @@ def process_image():
 
     image_file = request.files['image']
 
-    if image_file.filename.endswith('.png'):
-        input_image = np.array(Image.open(image_file))
-        output = localHistEqual4e(input_image, 3, 3)
+    input_image = np.array(Image.open(image_file))
+    output = localHistEqual4e(input_image, 3, 3)
 
-        output_image = Image.fromarray(output)
-        output_data = BytesIO()
-        output_image.save(output_data, format='PNG')
-        output_data.seek(0)
+    output_image = Image.fromarray(output)
+    output_data = BytesIO()
+    output_image.save(output_data, format='PNG')
+    output_data.seek(0)
 
-        return send_file(output_data, mimetype='image/png', as_attachment=True,
-                         download_name='local_histogram_equalized_image.png')
-    else:
-        return 'Invalid file format. Only PNG files are allowed.'
+    return send_file(output_data, mimetype='image/png', as_attachment=True,
+                     download_name='local_histogram_equalized_image.png')
 
 
 @app.route('/image-global', methods=['POST'])
