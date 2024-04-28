@@ -37,10 +37,10 @@ This is a simple Python REST API built with Flask that accepts an image as input
 
 2. The API will be accessible at http://localhost:5000/image.
 
-3. Send a POST request to the endpoint http://localhost:5000/image with an image file attached.Example using CURL:
+3. Send a POST request to the endpoint http://localhost:5000/image-local with an image file attached.Example using CURL:
 
     ```
-    curl -X POST -F "image=@test-img5.pgm" http://127.0.0.1:5000/image
+    curl -X POST -F "image=@test-img5.pgm" http://127.0.0.1:5000/image-local --output test.png
     ```
 
     Replace test-img5.pgm with the actual path to the image file you want to process.
