@@ -117,3 +117,138 @@ def cdf_value(pdf_dict, range_L, value):
         if (c == value):
             break
     return round(cdf)
+
+
+def localHistColor(image, region_size=(50, 50)):
+    """
+        Perform local histogram equalization on the intensity component of an HSI image.
+        """
+    hsi_image = rgb_to_hsi(image)
+    intensity = hsi_image[:, :, 2]
+
+    # Calculate the number of regions in each dimension
+    height, width = intensity.shape
+    num_regions_x = width // region_size[1]
+    num_regions_y = height // region_size[0]
+
+    # Apply histogram equalization to each region
+    for y in range(num_regions_y):
+        for x in range(num_regions_x):
+            # Calculate the region boundaries
+            region_start_x = x * region_size[1]
+            region_start_y = y * region_size[0]
+            region_end_x = min(region_start_x + region_size[1], width)
+            region_end_y = min(region_start_y + region_size[0], height)
+
+            # Extract the region from the intensity component
+            region = intensity[region_start_y:region_end_y, region_start_x:region_end_x]
+
+            # Perform histogram equalization on the region
+            equalized_region = localHistEqual4e(region, 3, 3)  # Call your local histogram equalization method
+
+            # Place the equalized region back into the intensity component
+            intensity[region_start_y:region_end_y, region_start_x:region_end_x] = equalized_region
+
+    # Update the intensity component in the HSI image
+    hsi_image[:, :, 2] = intensity
+
+    # Convert the modified HSI image back to RGB
+    output_image = hsi_to_rgb(hsi_image)
+    return output_image
+
+
+def rgb_to_hsi(rgb_image):
+    """
+    Convert RGB image to HSI color space.
+    """
+    # Normalize RGB values
+    r, g, b = rgb_image[:, :, 0], rgb_image[:, :, 1], rgb_image[:, :, 2]
+    r_normalized = r / 255.0
+    g_normalized = g / 255.0
+    b_normalized = b / 255.0
+
+    # Calculate intensity
+    intensity = (r_normalized + g_normalized + b_normalized) / 3.0
+
+    # Calculate saturation
+    minimum = np.minimum.reduce([r_normalized, g_normalized, b_normalized])
+    saturation = 1 - (3.0 / (r_normalized + g_normalized + b_normalized + 1e-10)) * minimum
+
+    # Calculate hue
+    numerator = 0.5 * ((r_normalized - g_normalized) + (r_normalized - b_normalized))
+    denominator = np.sqrt(
+        (r_normalized - g_normalized) ** 2 + (r_normalized - b_normalized) * (g_normalized - b_normalized))
+    hue = np.arccos(np.clip(numerator / (denominator + 1e-10), -1, 1))
+    hue[b_normalized > g_normalized] = 2 * np.pi - hue[b_normalized > g_normalized]
+    hue *= 180.0 / np.pi  # Convert radians to degrees
+
+    # Stack HSI components
+    hsi_image = np.dstack((hue, saturation, intensity))
+    return hsi_image
+
+
+def hsi_to_rgb(hsi_image):
+    """
+    Convert HSI image to RGB color space.
+    """
+    # Extract HSI components
+    hue, saturation, intensity = hsi_image[:, :, 0], hsi_image[:, :, 1], hsi_image[:, :, 2]
+
+    # Normalize hue to range [0, 1]
+    hue_normalized = hue / 360.0
+
+    # Convert HSI to RGB
+    r, g, b = np.zeros_like(hue), np.zeros_like(hue), np.zeros_like(hue)
+
+    # Region 1: 0 <= H < 120
+    b[(0 <= hue_normalized) & (hue_normalized < 1 / 3)] = intensity[
+                                                              (0 <= hue_normalized) & (hue_normalized < 1 / 3)] * (
+                                                                      1 - saturation[
+                                                                  (0 <= hue_normalized) & (hue_normalized < 1 / 3)])
+    r[(0 <= hue_normalized) & (hue_normalized < 1 / 3)] = intensity[
+                                                              (0 <= hue_normalized) & (hue_normalized < 1 / 3)] * (1 + (
+                saturation[(0 <= hue_normalized) & (hue_normalized < 1 / 3)] * np.cos(
+            hue[(0 <= hue_normalized) & (hue_normalized < 1 / 3)])) / (np.cos(
+        np.pi / 3 - hue[(0 <= hue_normalized) & (hue_normalized < 1 / 3)]) + 1e-10))
+    g[(0 <= hue_normalized) & (hue_normalized < 1 / 3)] = 3 * intensity[
+        (0 <= hue_normalized) & (hue_normalized < 1 / 3)] - (r[(0 <= hue_normalized) & (hue_normalized < 1 / 3)] + b[
+        (0 <= hue_normalized) & (hue_normalized < 1 / 3)])
+
+    # Region 2: 120 <= H < 240
+    r[(1 / 3 <= hue_normalized) & (hue_normalized < 2 / 3)] = intensity[(1 / 3 <= hue_normalized) & (
+                hue_normalized < 2 / 3)] * (1 - saturation[(1 / 3 <= hue_normalized) & (hue_normalized < 2 / 3)])
+    g[(1 / 3 <= hue_normalized) & (hue_normalized < 2 / 3)] = intensity[(1 / 3 <= hue_normalized) & (
+                hue_normalized < 2 / 3)] * (1 + (
+                saturation[(1 / 3 <= hue_normalized) & (hue_normalized < 2 / 3)] * np.cos(
+            hue[(1 / 3 <= hue_normalized) & (hue_normalized < 2 / 3)] - 2 * np.pi / 3)) / (np.cos(
+        np.pi / 3 - (hue[(1 / 3 <= hue_normalized) & (hue_normalized < 2 / 3)] - 2 * np.pi / 3)) + 1e-10))
+    b[(1 / 3 <= hue_normalized) & (hue_normalized < 2 / 3)] = 3 * intensity[
+        (1 / 3 <= hue_normalized) & (hue_normalized < 2 / 3)] - (r[(1 / 3 <= hue_normalized) & (
+                hue_normalized < 2 / 3)] + g[(1 / 3 <= hue_normalized) & (hue_normalized < 2 / 3)])
+
+    # Region 3: 240 <= H < 360
+    g[(2 / 3 <= hue_normalized) & (hue_normalized <= 1)] = intensity[
+                                                               (2 / 3 <= hue_normalized) & (hue_normalized <= 1)] * (
+                                                                       1 - saturation[
+                                                                   (2 / 3 <= hue_normalized) & (hue_normalized <= 1)])
+    b[(2 / 3 <= hue_normalized) & (hue_normalized <= 1)] = intensity[
+                                                               (2 / 3 <= hue_normalized) & (hue_normalized <= 1)] * (
+                                                                       1 + (saturation[(2 / 3 <= hue_normalized) & (
+                                                                           hue_normalized <= 1)] * np.cos(hue[(
+                                                                                                                          2 / 3 <= hue_normalized) & (
+                                                                                                                          hue_normalized <= 1)] - 4 * np.pi / 3)) / (
+                                                                                   np.cos(np.pi / 3 - (hue[(
+                                                                                                                       2 / 3 <= hue_normalized) & (
+                                                                                                                       hue_normalized <= 1)] - 4 * np.pi / 3)) + 1e-10))
+    r[(2 / 3 <= hue_normalized) & (hue_normalized <= 1)] = 3 * intensity[
+        (2 / 3 <= hue_normalized) & (hue_normalized <= 1)] - (g[(2 / 3 <= hue_normalized) & (hue_normalized <= 1)] + b[
+        (2 / 3 <= hue_normalized) & (hue_normalized <= 1)])
+
+    # Clip RGB values to range [0, 1]
+    r = np.clip(r, 0, 1)
+    g = np.clip(g, 0, 1)
+    b = np.clip(b, 0, 1)
+
+    # Stack RGB components
+    rgb_image = np.dstack((r * 255, g * 255, b * 255))
+    return rgb_image.astype(np.uint8)

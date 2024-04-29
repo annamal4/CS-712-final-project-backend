@@ -3,7 +3,7 @@ import logging
 from io import BytesIO
 import numpy as np
 from globalHist import globalHistEqual
-from localHist import localHistEqual4e
+from localHist import localHistEqual4e, localHistColor
 from PIL import Image
 
 app = Flask(__name__)
@@ -11,9 +11,11 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def invert_pixels(img_data):
     inverted_img_data = bytearray([255 - byte for byte in img_data])
     return inverted_img_data
+
 
 @app.route('/image-local', methods=['POST'])
 def process_local_image():
@@ -53,6 +55,27 @@ def process_global_image():
 
     return send_file(output_data, mimetype='image/png', as_attachment=True,
                      download_name='global_histogram_equalized_image.png')
+
+
+@app.route('/image-local-color', methods=['POST'])
+def process_image_color():
+    logger.info("Processing image with local histogram equalization")
+
+    if 'image' not in request.files:
+        return 'No image file in the request', 400
+
+    image_file = request.files['image']
+
+    input_image = np.array(Image.open(image_file))
+    output = localHistColor(input_image)
+
+    output_image = Image.fromarray(output)
+    output_data = BytesIO()
+    output_image.save(output_data, format='PNG')
+    output_data.seek(0)
+
+    return send_file(output_data, mimetype='image/png', as_attachment=True,
+                     download_name='local_histogram_equalized_image.png')
 
 
 if __name__ == '__main__':
