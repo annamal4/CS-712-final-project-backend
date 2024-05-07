@@ -1,6 +1,5 @@
 import io
 
-
 from flask import Flask, request, send_file
 import logging
 from io import BytesIO
@@ -60,6 +59,7 @@ def process_global_image():
     return send_file(output_data, mimetype='image/png', as_attachment=True,
                      download_name='global_histogram_equalized_image.png')
 
+
 @app.route('/image-compare', methods=['POST'])
 def process_image_comparison():
     logger.info("Comparing image with local and global histogram equalization")
@@ -69,13 +69,12 @@ def process_image_comparison():
 
     input_image = np.array(Image.open(image_file))
 
-    local_output = localHistEqual4e(input_image, 3, 3)
+    local_output = local_hist_equalization(input_image, 3, 3)
     global_output = globalHistEqual(input_image)
 
     diff_mask = np.abs(local_output - global_output)
     overlay_image = np.stack([input_image, input_image, input_image], axis=-1)
     overlay_image[diff_mask > 100] = [255, 0, 0]
-
 
     output_image = Image.fromarray(overlay_image)
     output_data = BytesIO()
