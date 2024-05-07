@@ -1,5 +1,6 @@
 import numpy as np
-
+import matplotlib.pyplot as plt
+from multiprocessing import Process
 # Histogram helper functions
 
 def calculate_histogram(image, width, height):
@@ -23,6 +24,19 @@ def calculate_cumulative_histogram(histogram):
 
     return cumulative_histogram
 
+def save_histogram_image(histogram, title, save_path):
+    plt.figure(figsize=(6, 4))
+    plt.bar(range(256), histogram)
+    plt.title(title)
+    plt.xlabel('Pixel Value')
+    plt.ylabel('Frequency')
+    plt.savefig(save_path)
+    plt.close()
+
+def plot_histograms(histogram, equalized_histogram):
+    save_histogram_image(histogram, 'Original Histogram', "./test/original")
+    save_histogram_image(equalized_histogram, 'Equalized Histogram', "./test/equalized")
+
 
 # global histogram equalization
 
@@ -41,5 +55,10 @@ def globalHistEqual(f):
     normalized_histogram = [int(round((cumulative_histogram[i] / total_pixels) * 255)) for i in range(256)]
 
     equalized_image = np.array([[normalized_histogram[pixel] for pixel in row] for row in f], dtype=np.uint8)
+
+    equalized_histogram = calculate_histogram(equalized_image, equalized_image.shape[1], equalized_image.shape[0])
+    p = Process(target=plot_histograms, args=(histogram, equalized_histogram))
+    p.start()
+    p.join
 
     return equalized_image

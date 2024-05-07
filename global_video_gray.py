@@ -20,8 +20,24 @@ def histogram_equalization(img):
 
     return img_equalized
 
+def local_histogram_equalization(img, block_size=256):
+    if block_size <= 0:
+        raise ValueError("Block size must be a positive integer.")
 
-def process_video(input_path, output_path):
+    # Create an empty image to store the local equalized result
+    img_local_equalized = np.zeros_like(img)
+
+    # Iterate over blocks of the image and apply histogram equalization
+    for i in range(0, img.shape[0], block_size):
+        for j in range(0, img.shape[1], block_size):
+            block = img[i:i+block_size, j:j+block_size]
+            equalized_block = histogram_equalization(block)
+            img_local_equalized[i:i+block_size, j:j+block_size] = equalized_block
+
+    return img_local_equalized
+
+
+def process_video(input_path, output_path, block_size=256):
     # Open the video
     cap = cv2.VideoCapture(input_path)
     if not cap.isOpened():
@@ -71,7 +87,9 @@ def process_video(input_path, output_path):
 
 
 # Usage
-input_video_path = r"C:\Users\nagal\Downloads\4999917-uhd_3840_2160_30fps.mp4"
-output_video_path = r"C:\Users\nagal\Downloads"
+# input_video_path = r"C:\Users\nagal\Downloads\4999917-uhd_3840_2160_30fps.mp4"
+# output_video_path = r"C:\Users\nagal\Downloads"
+input_video_path = r"./ultrasound-test-video.mp4"
+output_video_path = r"./"
 process_video(input_video_path, output_video_path)
 
