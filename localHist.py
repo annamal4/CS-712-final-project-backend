@@ -11,7 +11,7 @@ def local_hist_equalization(f, m, n):
     outer = []
     for sub_array in sliced:
         val = replace_value(sub_array, L)
-        outer.append(val)  # Remove np.uint8 here
+        outer.append(val)
 
     equalized_image = np.reshape(outer, output_shape)
     # Normalize if necessary
@@ -133,7 +133,7 @@ def local_hist_color(image, region_size=(50, 50)):
             region = intensity[region_start_y:region_end_y, region_start_x:region_end_x]
 
             # Perform histogram equalization on the region
-            equalized_region = local_hist_equalization(region, 3, 3)  # Call your local histogram equalization method
+            equalized_region = local_hist_equalization(region, 3, 3)
 
             # Place the equalized region back into the intensity component
             intensity[region_start_y:region_end_y, region_start_x:region_end_x] = equalized_region
