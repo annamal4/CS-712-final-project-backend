@@ -9,7 +9,6 @@ from globalHist import globalHistEqual, rgb_to_hsi_global, equalize_intensity, h
 from localHist import local_hist_equalization, local_hist_color
 from PIL import Image
 
-from processColorImage import hsi_to_rgb, rgb_to_hsi
 
 app = Flask(__name__)
 
